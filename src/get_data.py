@@ -131,6 +131,59 @@ class Covid:
         plt.show()
         print('\n')
 
+    def plot_compare_states(self, states=[], last_30_days=False):
+        plt.figure(figsize=(15, 6))
+        if last_30_days:
+            plt.title('Cumulative Cases in Last 30 days')
+            colors = []
+            for s in states:
+                color = tuple(np.round(np.random.random(3), 2))
+                colors.append(color)
+                plt.plot(self.state_dict[s]['date'][-31: -1],
+                         self.state_dict[s]['cases'][-31: -1],
+                         color=color,
+                         linewidth=3)
+                plt.xticks(rotation=45, fontsize=9)
+            plt.legend(states, fontsize=12)
+            plt.show()
+        else:
+            plt.title('Cumulative Cases')
+            colors = []
+            for s in states:
+                color = tuple(np.round(np.random.random(3), 2))
+                colors.append(color)
+                plt.plot(self.state_dict[s]['date'],
+                         self.state_dict[s]['cases'],
+                         color=color,
+                         linewidth=3)
+                plt.xticks(rotation=45, fontsize=9)
+            plt.legend(states, fontsize=12)
+            plt.show()
+
+    def plot_state_rank(self, n=6, start_date=None):
+        cases = {}
+        deaths = {}
+        new_cases = {}
+        new_deaths = {}
+
+        if start_date == None:
+            sd = self.state.iloc[-1]['date'].date()
+        else:
+            sd = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
+
+        for state in self.state_dict:
+            df = self.state_dict[state]
+            for l in range(len(df)):
+                if df['date'].iloc[l].date() == sd:
+                    cases[state] = df.iloc[l]['cases']
+                    deaths[state] = df.iloc[l]['deaths']
+                    new_cases[state] = df.iloc[l]['new_cases']
+                    new_deaths[state] = df.iloc[l]['new_deaths']
+        sort_cases = sorted(((v, k) for (k, v) in cases.items()), reverse=True)[:n]
+        sort_deaths = sorted(((v, k) for (k, v) in deaths.items()), reverse=True)[:n]
+        sort_new_cases = sorted(((v, k) for (k, v) in new_cases.items()), reverse=True)[:n]
+        sort_new_deaths = sorted(((v, k) for (k, v) in new_deaths.items()), reverse=True)[:n]
+
 
 
 
