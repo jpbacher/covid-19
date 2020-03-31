@@ -11,7 +11,7 @@ from datetime import date
 
 class Covid:
     def __init__(self):
-        self.state_df_df = None
+        self.state_df = None
         self.county_df_df = None
         self._state_updated = False
         self._county_updated = False
@@ -19,31 +19,34 @@ class Covid:
         self._date_today = self._get_date_today()
 
     def _get_date_today(self):
-        text = f"Today's date: {date.today()}"
-        return text
+        print(f'Today is {date.today()}')
 
     def update_state(self, url="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"):
+        print('retrieving content...')
         content = requests.get(url).content
-        self.state_df_df = pd.read_csv(io.StringIO(content.decode('utf-8')))
+        self.state_df = pd.read_csv(io.StringIO(content.decode('utf-8')))
         self.state_df['date'] = pd.to_datetime(self.state_df['date'], format='%Y-%m-%d')
+        print('process completed...')
         self._state_updated = True
 
 
     def update_county(self, url="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"):
         content =  requests.get(url).content
         self.county_df = pd.read_csv(io.StringIO(content.decode('utf-8')))
-        self.county_df['date'] = pd.to_datetime(self.state_df['date'], format='%Y-%m-%d')
+        self.county_df['date'] = pd.to_datetime(self.county_df['date'], format='%Y-%m-%d')
         self._county_updated = True
 
     def quick_look(self):
         if self._state_updated:
             print('first five rows of state-wide data:')
-            print('*' * 30)
+            print('*' * 48)
             print(self.state_df.head())
+            print(f'\nNumber of instances: {self.state_df.shape[0]}')
         if self._county_updated:
             print('first five rows of county data')
-            print('*' * 30)
+            print('*' * 48)
             print(self.county_df.head())
+            print(f'\nNumber of instances: {self.county_df.shape[0]}')
 
     def process_data(self):
         self.state_df_dict = {}
@@ -56,7 +59,7 @@ class Covid:
                 state_df = self.state_df.loc[self.state_df['state'] == s]
                 state_df['new_cases'] = state_df['cases'].diff()
                 state_df['new_deaths'] = state_df['deaths'].diff()
-                self.state_df_dict = state_df
+                self.state_df_dict[s] = state_df
         if self._county_updated:
             self.county_df_list = list(self.county_df['county'].unique())
             for c in self.county_df_list:
@@ -66,7 +69,7 @@ class Covid:
                 self.county_df_dict = county_df
         self._is_processed = True
         end = time.time()
-        print(f'completed, total time: {end - start} seconds')
+        print(f'process complete......\ntotal time: {end - start:0.3f} seconds')
 
     def plot_state(self, state='Georgia', last_30_days=False):
         if not self._is_processed:
@@ -87,7 +90,7 @@ class Covid:
             new_cases = df['new_cases'][-31: -1]
             new_deaths = df['new_deaths'][-31: -1]
 
-        plt.figure(figsize=(15, 6))
+        plt.figure(figsize=(12, 6))
         if last_30_days:
             plt.title(f'Cumulative Covid Cases for {state} in Last 30 Days')
         else:
@@ -98,18 +101,18 @@ class Covid:
         plt.show()
         print('\n')
 
-        plt.figure(figsize=(15, 6))
+        plt.figure(figsize=(12, 6))
         if last_30_days:
             plt.title(f'Cumulative Covid Deaths for {state} in Last 30 Days')
         else:
             plt.title(f'Cumulative Covid Deaths for {state}')
-        plt.bar(x=dates, height=deaths, color='blue', edgecolor='k')
+        plt.bar(x=dates, height=deaths, color='orange', edgecolor='k')
         plt.xticks(rotation=45, fontsize=9)
         sns.despine(left=True)
         plt.show()
         print('\n')
 
-        plt.figure(figsize=(15, 6))
+        plt.figure(figsize=(12, 6))
         if last_30_days:
             plt.title(f'New Covid Cases for {state} in Last 30 Days')
         else:
@@ -120,12 +123,12 @@ class Covid:
         plt.show()
         print('\n')
 
-        plt.figure(figsize=(15, 6))
+        plt.figure(figsize=(12, 6))
         if last_30_days:
             plt.title(f'New Covid Deaths for {state} in Last 30 Days')
         else:
             plt.title(f'New Covid Deaths for {state}')
-        plt.bar(x=dates, height=new_deaths, color='red', edgecolor='k')
+        plt.bar(x=dates, height=new_deaths, color='orange', edgecolor='k')
         plt.xticks(rotation=45, fontsize=9)
         sns.despine(left=True)
         plt.show()
@@ -134,7 +137,7 @@ class Covid:
     def plot_compare_states(self, states=[], last_30_days=False):
         plt.figure(figsize=(15, 6))
         if last_30_days:
-            plt.title('Cumulative Cases in Last 30 days')
+            plt.title('Cumulative Cases between States in Last 30 days')
             colors = []
             for s in states:
                 color = tuple(np.round(np.random.random(3), 2))
@@ -144,10 +147,11 @@ class Covid:
                          color=color,
                          linewidth=3)
                 plt.xticks(rotation=45, fontsize=9)
+                sns.despine(left=True)
             plt.legend(states, fontsize=12)
             plt.show()
         else:
-            plt.title('Cumulative Cases')
+            plt.title('Cumulative Cases between States')
             colors = []
             for s in states:
                 color = tuple(np.round(np.random.random(3), 2))
@@ -157,10 +161,11 @@ class Covid:
                          color=color,
                          linewidth=3)
                 plt.xticks(rotation=45, fontsize=9)
+                sns.despine(left=True)
             plt.legend(states, fontsize=12)
             plt.show()
 
-    def plot_state_rank(self, n=6, start_date=None):
+    def plot_top_states(self, n=6, start_date=None):
         cases = {}
         deaths = {}
         new_cases = {}
@@ -205,3 +210,5 @@ class Covid:
                    height=[v[0] for v in sort_new_deaths],
                    color='red', edgecolor='k')
         axs[3].set_title(f'New Deaths on {sd}')
+        sns.despine(left=True)
+        plt.show()
