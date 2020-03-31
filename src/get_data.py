@@ -11,8 +11,8 @@ from datetime import date
 
 class Covid:
     def __init__(self):
-        self.state = None
-        self.county = None
+        self.state_df_df = None
+        self.county_df_df = None
         self._state_updated = False
         self._county_updated = False
         self._is_processed = False
@@ -24,46 +24,46 @@ class Covid:
 
     def update_state(self, url="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"):
         content = requests.get(url).content
-        self.state = pd.read_csv(io.StringIO(content.decode('utf-8')))
-        self.state['date'] = pd.to_datetime(self.state['date'], format='%Y-%m-%d')
+        self.state_df_df = pd.read_csv(io.StringIO(content.decode('utf-8')))
+        self.state_df['date'] = pd.to_datetime(self.state_df['date'], format='%Y-%m-%d')
         self._state_updated = True
 
 
     def update_county(self, url="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"):
         content =  requests.get(url).content
-        self.county = pd.read_csv(io.StringIO(content.decode('utf-8')))
-        self.county['date'] = pd.to_datetime(self.state['date'], format='%Y-%m-%d')
+        self.county_df = pd.read_csv(io.StringIO(content.decode('utf-8')))
+        self.county_df['date'] = pd.to_datetime(self.state_df['date'], format='%Y-%m-%d')
         self._county_updated = True
 
     def quick_look(self):
         if self._state_updated:
             print('first five rows of state-wide data:')
             print('*' * 30)
-            print(self.state.head())
+            print(self.state_df.head())
         if self._county_updated:
             print('first five rows of county data')
             print('*' * 30)
-            print(self.county.head())
+            print(self.county_df.head())
 
     def process_data(self):
-        self.state_dict = {}
-        self.county_dict = {}
+        self.state_df_dict = {}
+        self.county_df_dict = {}
         print('processing data......')
         start = time.time()
         if self._state_updated:
-            self.state_list = list(self.state['state'].unique())
-            for s in self.state_list:
-                state_df = self.state.loc[self.state['state'] == s]
+            self.state_df_list = list(self.state_df['state'].unique())
+            for s in self.state_df_list:
+                state_df = self.state_df.loc[self.state_df['state'] == s]
                 state_df['new_cases'] = state_df['cases'].diff()
                 state_df['new_deaths'] = state_df['deaths'].diff()
-                self.state_dict = state_df
+                self.state_df_dict = state_df
         if self._county_updated:
-            self.county_list = list(self.county['county'].unique())
-            for c in self.county_list:
-                county_df = self.county.loc[self.county['county'] == c]
+            self.county_df_list = list(self.county_df['county'].unique())
+            for c in self.county_df_list:
+                county_df = self.county_df.loc[self.county_df['county'] == c]
                 county_df['new_cases'] = county_df['cases'].diff()
                 county_df['new_deaths'] = county_df['deaths'].diff()
-                self.county_dict = county_df
+                self.county_df_dict = county_df
         self._is_processed = True
         end = time.time()
         print(f'completed, total time: {end - start} seconds')
@@ -71,9 +71,9 @@ class Covid:
     def plot_state(self, state='Georgia', last_30_days=False):
         if not self._is_processed:
             print('Data not processed')
-        assert state in self.state_list, 'state not in list of states'
+        assert state in self.state_df_list, 'state not in list of states'
 
-        df = self.state_dict[state]
+        df = self.state_df_dict[state]
         dates = df['date']
         cases = df['cases']
         deaths = df['deaths']
@@ -139,8 +139,8 @@ class Covid:
             for s in states:
                 color = tuple(np.round(np.random.random(3), 2))
                 colors.append(color)
-                plt.plot(self.state_dict[s]['date'][-31: -1],
-                         self.state_dict[s]['cases'][-31: -1],
+                plt.plot(self.state_df_dict[s]['date'][-31: -1],
+                         self.state_df_dict[s]['cases'][-31: -1],
                          color=color,
                          linewidth=3)
                 plt.xticks(rotation=45, fontsize=9)
@@ -152,8 +152,8 @@ class Covid:
             for s in states:
                 color = tuple(np.round(np.random.random(3), 2))
                 colors.append(color)
-                plt.plot(self.state_dict[s]['date'],
-                         self.state_dict[s]['cases'],
+                plt.plot(self.state_df_dict[s]['date'],
+                         self.state_df_dict[s]['cases'],
                          color=color,
                          linewidth=3)
                 plt.xticks(rotation=45, fontsize=9)
@@ -167,12 +167,12 @@ class Covid:
         new_deaths = {}
 
         if start_date == None:
-            sd = self.state.iloc[-1]['date'].date()
+            sd = self.state_df.iloc[-1]['date'].date()
         else:
             sd = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
 
-        for state in self.state_dict:
-            df = self.state_dict[state]
+        for state in self.state_df_dict:
+            df = self.state_df_dict[state]
             for l in range(len(df)):
                 if df['date'].iloc[l].date() == sd:
                     cases[state] = df.iloc[l]['cases']
@@ -184,15 +184,24 @@ class Covid:
         sort_new_cases = sorted(((v, k) for (k, v) in new_cases.items()), reverse=True)[:n]
         sort_new_deaths = sorted(((v, k) for (k, v) in new_deaths.items()), reverse=True)[:n]
 
+        _, axs = plt.subplots(nrows=2, ncols=2, figsize=(15, 12))
+        axs = axs.ravel()
+        axs[0].bar(x=[v[1] for v in sort_cases],
+                   height=[v[0] for v in sort_cases],
+                   color='blue', edgecolor='k')
+        axs[0].set_title(f'Cumulative Cases on {sd}')
 
+        axs[1].bar(x=[v[1] for v in sort_deaths],
+                   height=[v[0] for v in sort_deaths],
+                   color='yellow', edgecolor='k')
+        axs[1].set_title(f'Cumulative Deaths on {sd}')
 
+        axs[2].bar(x=[v[1] for v in sort_new_cases],
+                   height=[v[0] for v in sort_new_cases],
+                   color='orange', edgecolor='k')
+        axs[2].set_title(f'New Cases on {sd}')
 
-
-
-
-
-
-
-
-
-
+        axs[3].bar(x=[v[1] for v in sort_new_deaths],
+                   height=[v[0] for v in sort_new_deaths],
+                   color='red', edgecolor='k')
+        axs[3].set_title(f'New Deaths on {sd}')
