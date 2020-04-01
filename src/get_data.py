@@ -12,7 +12,7 @@ from datetime import date
 class Covid:
     def __init__(self):
         self.state_df = None
-        self.county_df_df = None
+        self.county_df = None
         self._state_updated = False
         self._county_updated = False
         self._is_processed = False
@@ -21,19 +21,20 @@ class Covid:
     def _get_date_today(self):
         print(f'Today is {date.today()}')
 
-    def update_state(self, url="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"):
-        print('retrieving content...')
+    def get_state_df(self, url="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"):
+        print('retrieving state content...')
         content = requests.get(url).content
         self.state_df = pd.read_csv(io.StringIO(content.decode('utf-8')))
         self.state_df['date'] = pd.to_datetime(self.state_df['date'], format='%Y-%m-%d')
-        print('process completed...')
+        print('dataframe completed...')
         self._state_updated = True
 
-
-    def update_county(self, url="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"):
-        content =  requests.get(url).content
+    def get_county_df(self, url="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"):
+        print('retrieving county content...')
+        content = requests.get(url).content
         self.county_df = pd.read_csv(io.StringIO(content.decode('utf-8')))
         self.county_df['date'] = pd.to_datetime(self.county_df['date'], format='%Y-%m-%d')
+        print('dataframe completed')
         self._county_updated = True
 
     def quick_look(self):
@@ -69,7 +70,7 @@ class Covid:
                 self.county_df_dict = county_df
         self._is_processed = True
         end = time.time()
-        print(f'process complete......\ntotal time: {end - start:0.3f} seconds')
+        print(f'processing complete......\ntotal time: {end - start:0.3f} seconds')
 
     def plot_state(self, state='Georgia', last_30_days=False):
         if not self._is_processed:
